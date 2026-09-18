@@ -139,6 +139,7 @@ function generateTransaction(previousTransaction = null)
         gpsAccuracy = 3000; // Set accuracy to 3000 meters
         randomTransactionType = inPersonTransactionTypes[Math.floor(Math.random() * inPersonTransactionTypes.length)];
         //gpsAccuracy = Math.floor(Math.random() * (5000-1000 + 1)) + 1000; 
+        // Add radius to the device location to simulate poor GPS accuracy
     }
     // Online scenario 
     else if (randomScenarioType === "online")
@@ -204,6 +205,8 @@ function generateTransaction(previousTransaction = null)
     return transaction;
 
 }
+
+export { generateTransaction };
 
 let previousTransaction = null;
 
