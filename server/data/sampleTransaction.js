@@ -211,9 +211,11 @@ export { generateTransaction };
 let previousTransaction = null;
 
 // Generating many random transactions for testing
-for (let i = 0; i < 20; i++) 
+/*for (let i = 0; i < 20; i++) 
 {
     const newTransaction = generateTransaction(previousTransaction);
     console.log(newTransaction);
     previousTransaction = newTransaction;
-}
+}*/
+
+

@@ -26,7 +26,8 @@ const databaseTransaction = {
 
 const { data, error } = await supabase
     .from("transactions")
-    .insert(databaseTransaction);
+    .select("*") // retrieve all columns
+    .eq("simulated_fraud_label", true); // filter data 
 
 console.log(data);
 console.log(error);
