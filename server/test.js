@@ -1,8 +1,16 @@
 import supabase from "./supabaseClient.js";
 import { generateTransaction } from "./data/sampleTransaction.js";
 
-const transaction = generateTransaction(null);
-const databaseTransaction = {
+//const transaction = generateTransaction(null);
+
+let previousTransaction = null;
+
+/* Start with no preivous transaction, generate one, format for Supabase, 
+insert into Supabse, remember as previous transaction, repeat 20 times, then query for all transactions with simulated_fraud_label = true and log to console */
+/*for (let i = 0; i < 20; i++)
+{
+    const transaction = generateTransaction(previousTransaction);
+    const databaseTransaction = {
     transaction_id: transaction.transactionId,
     amount_spent: transaction.amountSpent,
     transaction_type: transaction.transactionType,
@@ -22,13 +30,20 @@ const databaseTransaction = {
     device_longitude: transaction.deviceInfo.deviceLongitude,
     accuracy_meters: transaction.deviceInfo.accuracyMeters,
     device_timestamp: transaction.deviceInfo.deviceTimestamp 
-};
+    };
+    const { error } = await supabase
+        .from("transactions")
+        .insert([databaseTransaction]);
+    previousTransaction = transaction;
+}*/
 
 const { data, error } = await supabase
     .from("transactions")
     .select("*") // retrieve all columns
-    .eq("simulated_fraud_label", true); // filter data 
-
+    // Filtering data 
+    //.eq("simulated_fraud_label", true)
+    //.eq("scenario_type", "impossible travel");
+    .eq("transaction_type", "atm")
 console.log(data);
 console.log(error);
 

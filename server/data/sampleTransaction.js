@@ -208,7 +208,7 @@ function generateTransaction(previousTransaction = null)
 
 export { generateTransaction };
 
-let previousTransaction = null;
+
 
 // Generating many random transactions for testing
 /*for (let i = 0; i < 20; i++) 
