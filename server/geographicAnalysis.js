@@ -1,13 +1,17 @@
-// Use Haversine formula to calculate the shortest distance along Earth's surface btwn two latitude/longitude coordinates
+// Use Haversine formula to calculate the shortest distance along Earth's surface
+// between two latitude/longitude coordinates
 // Geographic, not realistic
 
-// Haversine vs API 
+// Haversine vs API
 // Haversine: "How far apart are they geographically"
 // API: "How long would it take to actually drive these distances"
 
 import "dotenv/config";
 
 const ORS_API_KEY = process.env.ORS_API_KEY;
+
+
+// HAVERSINE DISTANCE
 
 function calculateDistance(lat1, lon1, lat2, lon2)
 {
@@ -20,15 +24,18 @@ function calculateDistance(lat1, lon1, lat2, lon2)
     const latDifference = (lat2 - lat1) * (Math.PI / 180);
     const lonDifference = (lon2 - lon1) * (Math.PI / 180);
 
-    // Haversine formula 
+    // Haversine formula
     const a =
         Math.sin(latDifference / 2) ** 2 +
         Math.cos(lat1Rad) *
         Math.cos(lat2Rad) *
         Math.sin(lonDifference / 2) ** 2;
 
-    // Central angle btwn two locations on Earth (radians)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Central angle between two locations on Earth (radians)
+    const c = 2 * Math.atan2(
+        Math.sqrt(a),
+        Math.sqrt(1 - a)
+    );
 
     // Distance in kilometers
     const distance = earthRadius * c;
@@ -36,7 +43,10 @@ function calculateDistance(lat1, lon1, lat2, lon2)
     return distance;
 }
 
-// Return the driving distance and estimated driving time between two locations 
+
+// OPENROUTESERVICE API
+
+// Return the driving distance and estimated driving time between two locations
 async function getRouteInfo(startLon, startLat, endLon, endLat)
 {
     const url = "https://api.heigit.org/openrouteservice/v2/directions/driving-car";
@@ -59,12 +69,18 @@ async function getRouteInfo(startLon, startLat, endLon, endLat)
 
 const data = await response.json();
 
+// If OpenRouteService cannot find a driving route
+    if (!response.ok || !data.routes || data.routes.length === 0)
+    {
+        return null;
+    }
+
     const routeSummary = data.routes[0].summary;
 
-    // Convert meters → kilometers
+    // Convert meters to kilometers
     const distanceKm = routeSummary.distance / 1000;
 
-    // Convert seconds → minutes
+    // Convert seconds to minutes
     const durationMinutes = routeSummary.duration / 60;
 
     return {
@@ -72,6 +88,9 @@ const data = await response.json();
         durationMinutes
     };
 }
+
+
+// TIME DIFFERENCE
 
 // Calculate available travel time between two transaction timestamps
 function calculateTimeDifference(previousTimestamp, currentTimestamp)
@@ -81,11 +100,12 @@ function calculateTimeDifference(previousTimestamp, currentTimestamp)
 
     const differenceMilliseconds = currentTime - previousTime;
 
-    // Convert milliseconds → minutes
+    // Convert milliseconds to minutes
     const differenceMinutes = differenceMilliseconds / (1000 * 60);
 
     return differenceMinutes;
 }
+
 
 // TRAVEL FEASIBILITY
 
@@ -94,27 +114,26 @@ function isTravelPossible(availableMinutes, requiredMinutes)
     return availableMinutes >= requiredMinutes;
 }
 
-// TEMPORARY TEST
+// Estimate travel feasibility when a driving route is unavailable
+function estimateTravelPossible(geographicDistance, availableMinutes)
+{
+    // Convert available time to hours
+    const availableHours = availableMinutes / 60;
 
-const timeDifference = calculateTimeDifference(
-    "2026-09-25T14:00:00.000Z",
-    "2026-09-25T14:30:00.000Z"
-);
+    // Avoid dividing by zero
+    if (availableHours <= 0)
+    {
+        return false;
+    }
 
-const route = await getRouteInfo(
-    -82.3248, 29.6516,  // Gainesville
-    -81.6557, 30.3322   // Jacksonville
-);
+    // Calculate average speed required to travel the geographic distance
+    const requiredSpeed = geographicDistance / availableHours;
 
-const travelPossible = isTravelPossible(
-    timeDifference,
-    route.durationMinutes
-);
+    // Assume travel requiring more than 1000 km/h is unrealistic
+    return requiredSpeed <= 1000;
+}
 
-console.log(`Time available: ${timeDifference} minutes`);
-console.log(`Driving Distance: ${route.distanceKm.toFixed(2)} km`);
-console.log(`Estimated Travel Time: ${route.durationMinutes.toFixed(2)} minutes`);
-console.log(`Travel possible: ${travelPossible}`);
+// TRANSACTION TRAVEL ANALYSIS
 
 async function analyzeTransactionTravel(previousTransaction, currentTransaction)
 {
@@ -132,6 +151,18 @@ async function analyzeTransactionTravel(previousTransaction, currentTransaction)
         currentTransaction.merchantInfo.merchantLongitude
     );
 
+    // Online transactions do not require physical travel to the merchant
+    if (currentTransaction.transactionType === "online")
+    {
+        return {
+            availableMinutes,
+            geographicDistance,
+            drivingDistance: null,
+            requiredTravelMinutes: null,
+            travelPossible: null
+        };
+    }
+
     // Get realistic driving distance and travel time
     const route = await getRouteInfo(
         previousTransaction.merchantInfo.merchantLongitude,
@@ -139,6 +170,23 @@ async function analyzeTransactionTravel(previousTransaction, currentTransaction)
         currentTransaction.merchantInfo.merchantLongitude,
         currentTransaction.merchantInfo.merchantLatitude
     );
+
+    // If no driving route exists, estimate feasibility using geographic distance
+    if (route === null)
+    {
+        const travelPossible = estimateTravelPossible(
+            geographicDistance,
+            availableMinutes
+        );
+
+        return {
+            availableMinutes,
+            geographicDistance,
+            drivingDistance: null,
+            requiredTravelMinutes: null,
+            travelPossible
+        };
+    }
 
     // Compare available time with required driving time
     const travelPossible = isTravelPossible(
@@ -154,6 +202,8 @@ async function analyzeTransactionTravel(previousTransaction, currentTransaction)
         travelPossible
     };
 }
+
+
 // EXPORTS
 
 export {
@@ -161,5 +211,6 @@ export {
     getRouteInfo,
     calculateTimeDifference,
     isTravelPossible,
+    estimateTravelPossible,
     analyzeTransactionTravel
 };

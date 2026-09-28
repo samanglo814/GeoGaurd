@@ -1,5 +1,6 @@
-import supabase from "./supabaseClient.js";
-import { generateTransaction } from "./data/sampleTransaction.js";
+//import supabase from "./supabaseClient.js";
+import { generateTransaction } from "./data/sampleTransaction.js"; 
+import { analyzeTransactionTravel } from "./geographicAnalysis.js";
 
 //const transaction = generateTransaction(null);
 
@@ -37,6 +38,7 @@ insert into Supabse, remember as previous transaction, repeat 20 times, then que
     previousTransaction = transaction;
 }*/
 
+/*
 const { data, error } = await supabase
     .from("transactions")
     .select("*") // retrieve all columns
@@ -47,3 +49,24 @@ const { data, error } = await supabase
 console.log(data);
 console.log(error);
 
+*/
+
+// Geographic analysis testing
+
+const firstTransaction = generateTransaction();
+
+const secondTransaction = generateTransaction(firstTransaction);
+
+console.log("First Transaction:");
+console.log(firstTransaction);
+
+console.log("\nSecond Transaction:");
+console.log(secondTransaction);
+
+const analysis = await analyzeTransactionTravel(
+    firstTransaction,
+    secondTransaction
+);
+
+console.log("\nGeographic Analysis:");
+console.log(analysis);

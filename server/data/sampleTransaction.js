@@ -133,13 +133,24 @@ function generateTransaction(previousTransaction = null)
         simulatedFraudLabel = true; // Mark as fraud for impossible travel
     }
     // Poor gps, set the accuracy to be very poor 
-    else if (randomScenarioType === "poor gps")
+    else if (randomScenarioType === "poor gps" && previousTransaction !== null)
     {
-        deviceLocation = merchantLocation; 
-        gpsAccuracy = 3000; // Set accuracy to 3000 meters
-        randomTransactionType = inPersonTransactionTypes[Math.floor(Math.random() * inPersonTransactionTypes.length)];
-        //gpsAccuracy = Math.floor(Math.random() * (5000-1000 + 1)) + 1000; 
-        // Add radius to the device location to simulate poor GPS accuracy
+        // Keep the transaction in the same location as the previous transaction
+        merchantLocation = {
+            city: previousTransaction.merchantInfo.merchantCity,
+            country: previousTransaction.merchantInfo.merchantCountry,
+            latitude: previousTransaction.merchantInfo.merchantLatitude,
+            longitude: previousTransaction.merchantInfo.merchantLongitude
+        };
+
+        deviceLocation = merchantLocation;
+
+        // Simulate poor GPS accuracy
+        gpsAccuracy = 3000;
+
+        randomTransactionType = inPersonTransactionTypes[
+            Math.floor(Math.random() * inPersonTransactionTypes.length)
+        ];
     }
     // Online scenario 
     else if (randomScenarioType === "online")
@@ -208,14 +219,16 @@ function generateTransaction(previousTransaction = null)
 
 export { generateTransaction };
 
-
+let previousTransaction = null;
 
 // Generating many random transactions for testing
-/*for (let i = 0; i < 20; i++) 
+/*
+for (let i = 0; i < 20; i++) 
 {
     const newTransaction = generateTransaction(previousTransaction);
     console.log(newTransaction);
     previousTransaction = newTransaction;
+
+
+
 }*/
-
-
