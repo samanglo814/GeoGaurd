@@ -1,0 +1,10 @@
+{
+  "description": "GeoGuard is a fintech dashboard that detects fraudulent transactions through geographic analysis, providing users with real-time alerts and risk assessments.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
