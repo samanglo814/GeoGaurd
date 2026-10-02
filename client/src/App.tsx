@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 
 type Page =
   | "dashboard"
@@ -135,6 +135,31 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
     </svg>
   );
 }
+type Transaction = {
+  transactionId: string;
+  amountSpent: number;
+  transactionType: string;
+  transactionTimestamp: string;
+  scenarioType: string;
+  simulatedFraudLabel: boolean;
+
+  merchantInfo: {
+    merchantName: string;
+    merchantCity: string;
+    merchantCountry: string;
+    merchantLatitude: number;
+    merchantLongitude: number;
+  };
+
+  deviceInfo: {
+    deviceCity: string;
+    deviceCountry: string;
+    deviceLatitude: number;
+    deviceLongitude: number;
+    accuracyMeters: number;
+    deviceTimestamp: string;
+  };
+};
 
 const transactions = [
   {
@@ -527,12 +552,14 @@ function RecentTable({
   title = "Recent transactions",
   full = false,
   onOpen,
+  apiTransactions,
 }: {
   title?: string;
   full?: boolean;
   onOpen: () => void;
+  apiTransactions: Transaction[];
 }) {
-  const rows = full ? transactions : transactions.slice(0, 4);
+  const rows = full ? apiTransactions : apiTransactions.slice(0, 4);  
   return (
     <div className="card overflow-hidden">
       <div className="card-heading border-b border-slate-100 px-5 py-4">
@@ -557,19 +584,40 @@ function RecentTable({
           </thead>
           <tbody>
             {rows.map((transaction) => (
-              <tr key={transaction.id} onClick={transaction.risk === "High" ? onOpen : undefined}>
+              <tr key={transaction.transactionId}>                
                 <td>
                   <div className="flex items-center gap-3">
-                    <span className="merchant-icon">{transaction.initials}</span>
-                    <div><b>{transaction.merchant}</b><small>{transaction.id}</small></div>
-                  </div>
+                <span className="merchant-icon">
+                  {transaction.merchantInfo.merchantName
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((word) => word[0])
+                    .join("")
+                    .toUpperCase()}
+                </span>                  
+                    <div>
+                    <b>{transaction.merchantInfo.merchantName}</b>
+                    <small>{transaction.transactionId}</small>
+                  </div>                  
+                </div>
                 </td>
-                <td className="font-bold text-slate-800">{transaction.amount}</td>
-                <td>{transaction.type}</td>
-                <td>{transaction.time}</td>
-                <td><span className="inline-flex items-center gap-1.5"><Icon name="pin" size={13} />{transaction.location}</span></td>
-                <td><RiskBadge risk={transaction.risk} /></td>
-                <td><button className="row-arrow" aria-label={`View ${transaction.id}`}><Icon name="chevron" size={15} /></button></td>
+                <td className="font-bold text-slate-800">
+                  ${transaction.amountSpent.toFixed(2)}
+                </td>                
+                <td>{transaction.transactionType}</td>                
+                <td>
+                  {new Date(transaction.transactionTimestamp).toLocaleString()}
+                </td>                
+                <td>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Icon name="pin" size={13} />
+                    {transaction.merchantInfo.merchantCity}, {transaction.merchantInfo.merchantCountry}
+                  </span>
+                </td>                
+            <td>
+              <RiskBadge risk={transaction.simulatedFraudLabel ? "High" : "Safe"} />
+            </td>                
+            <td><button className="row-arrow" aria-label={`View ${transaction.transactionId}`}><Icon name="chevron" size={15} /></button></td>
               </tr>
             ))}
           </tbody>
@@ -578,8 +626,11 @@ function RecentTable({
     </div>
   );
 }
-
-function Dashboard({ setPage }: { setPage: (page: Page) => void }) {
+function Dashboard({setPage, apiTransactions,
+}: {
+  setPage: (page: Page) => void;
+  apiTransactions: Transaction[];
+}) {
   return (
     <>
       <div className="mb-5 flex items-center justify-between">
@@ -602,13 +653,22 @@ function Dashboard({ setPage }: { setPage: (page: Page) => void }) {
         <RiskDonut />
       </div>
       <div className="mt-4">
-        <RecentTable onOpen={() => setPage("transactions")} />
-      </div>
+      <RecentTable
+      onOpen={() => setPage("transactions")}
+      apiTransactions={apiTransactions}
+    />      
+    </div>
     </>
   );
 }
 
-function Transactions({ setPage }: { setPage: (page: Page) => void }) {
+function Transactions({
+  setPage,
+  apiTransactions,
+}: {
+  setPage: (page: Page) => void;
+  apiTransactions: Transaction[];
+}) {  
   return (
     <>
       <div className="toolbar">
@@ -623,7 +683,12 @@ function Transactions({ setPage }: { setPage: (page: Page) => void }) {
         </div>
       </div>
       <div className="mt-4">
-        <RecentTable title="All transactions" full onOpen={() => setPage("details")} />
+      <RecentTable
+        title="All transactions"
+        full
+        onOpen={() => setPage("details")}
+        apiTransactions={apiTransactions}
+      />
       </div>
       <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
         <span>Showing 1–6 of 12,847 transactions</span>
@@ -813,7 +878,22 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(true);
   const [page, setPage] = useState<Page>("dashboard");
 
+const [apiTransactions, setApiTransactions] = useState<Transaction[]>([]);
+
+useEffect(() => {
+fetch("http://127.0.0.1:3000/api/transactions")
+    .then((response) => response.json())
+    .then((data) => {
+      setApiTransactions(data);
+      console.log("API Transactions:", data);
+    })
+    .catch((error) => {
+      console.error("Error fetching transactions:", error);
+    });
+}, []);
+
   if (!loggedIn) {
+    //console.log("Number of API transactions:", apiTransactions.length);
     return <Login onLogin={() => setLoggedIn(true)} />;
   }
 
@@ -823,8 +903,13 @@ export default function App() {
       <div className="main-column">
         <Header page={page} />
         <main className="content">
-          {page === "dashboard" && <Dashboard setPage={setPage} />}
-          {page === "transactions" && <Transactions setPage={setPage} />}
+          {page === "dashboard" && (<Dashboard setPage={setPage} apiTransactions={apiTransactions} />)}          
+          {page === "transactions" && (
+            <Transactions
+              setPage={setPage}
+              apiTransactions={apiTransactions}
+            />
+          )}          
           {page === "alerts" && <Alerts setPage={setPage} />}
           {page === "details" && <TransactionDetails setPage={setPage} />}
           {page === "geographic" && <Geographic />}
@@ -833,3 +918,4 @@ export default function App() {
     </div>
   );
 }
+
