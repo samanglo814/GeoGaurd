@@ -643,7 +643,7 @@ function Dashboard({setPage, apiTransactions,
         <button className="outline-btn"><Icon name="download" size={15} /> Export report</button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total transactions" value="12,847" change="+12.5%" icon="card" tone="blue" foot="1,428 today" />
+        <StatCard label="Total transactions" value={apiTransactions.length.toString()} change="+12.5%" icon="card" tone="blue" foot="1,428 today" />
         <StatCard label="Safe transactions" value="11,928" change="+8.2%" icon="check" tone="green" foot="92.8% approval rate" />
         <StatCard label="Flagged transactions" value="919" change="-4.8%" icon="alert" tone="yellow" foot="7.2% of total volume" />
         <StatCard label="High-risk alerts" value="179" change="+2.4%" icon="shield" tone="red" foot="3 require immediate action" />

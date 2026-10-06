@@ -14,7 +14,7 @@
     "@faker-js/faker": "^10.6.0",
     "@supabase/supabase-js": "^2.116.0",
     "cors": "^2.8.6",
-    "dotenv": "^18.0.4",
+    "dotenv": "^18.0.5",
     "express": "^5.2.1"
   }
 }
