@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { generateTransaction } from "./data/sampleTransaction.js";
 import supabase from "./supabaseClient.js";
+import { analyzeTransactionTravel } from "./geographicAnalysis.js";
 
 const app = express();
 app.use(cors());
@@ -17,7 +18,8 @@ app.get("/", (req, res) => {
 app.get("/api/transactions", async (req, res) => {
     const { data, error } = await supabase
         .from("transactions")
-        .select("*");
+        .select("*")
+        .order("transaction_timestamp", { ascending: true });
 
     if (error) {
         console.error(error);
@@ -52,7 +54,38 @@ const transactions = data.map((row) => ({
     }
 }));
 
-res.json(transactions);});
+const analyzedTransactions = [];
+
+for (let i = 0; i < transactions.length; i++)
+{
+    const transaction = transactions[i];
+
+    // First transaction has no previous transaction to compare
+    if (i === 0)
+    {
+        analyzedTransactions.push({
+            ...transaction,
+            geographicAnalysis: null
+        });
+
+        continue;
+    }
+
+    const previousTransaction = transactions[i - 1];
+
+    const analysis = await analyzeTransactionTravel(
+        previousTransaction,
+        transaction
+    );
+
+    analyzedTransactions.push({
+        ...transaction,
+        geographicAnalysis: analysis
+    });
+}
+
+res.json(analyzedTransactions);
+});
 
 app.listen(PORT, () => {
     console.log(`GeoGuard API running on port ${PORT}`);

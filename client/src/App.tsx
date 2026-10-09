@@ -143,6 +143,14 @@ type Transaction = {
   scenarioType: string;
   simulatedFraudLabel: boolean;
 
+    geographicAnalysis: {
+    availableMinutes: number;
+    geographicDistance: number;
+    drivingDistance: number | null;
+    requiredTravelMinutes: number | null;
+    travelPossible: boolean | null;
+  } | null;
+
   merchantInfo: {
     merchantName: string;
     merchantCity: string;
@@ -477,7 +485,64 @@ function StatCard({
   );
 }
 
-function ActivityChart() {
+function ActivityChart({
+  apiTransactions,
+}: {
+  apiTransactions: Transaction[];
+}) {  
+
+const today = apiTransactions.length > 0
+  ? new Date(Math.max(
+      ...apiTransactions.map(
+        (transaction) => new Date(transaction.transactionTimestamp).getTime()
+      )
+    ))
+  : new Date();
+
+today.setHours(0, 0, 0, 0);
+
+const dailyActivity = Array.from({ length: 7 }, (_, index) => {
+  const date = new Date(today);
+  date.setDate(today.getDate() - (6 - index));
+
+  const nextDate = new Date(date);
+  nextDate.setDate(date.getDate() + 1);
+
+  const transactionsForDay = apiTransactions.filter((transaction) => {
+    const timestamp = new Date(transaction.transactionTimestamp);
+    return timestamp >= date && timestamp < nextDate;
+  });
+
+  return {
+    date: date.toLocaleDateString("en-US", { weekday: "short" }),
+    total: transactionsForDay.length,
+    flagged: transactionsForDay.filter(
+      (transaction) =>
+        transaction.geographicAnalysis?.travelPossible === false
+    ).length,
+  };
+});
+
+const maxActivity = Math.max(
+  1,
+  ...dailyActivity.map((day) => day.total)
+);
+
+const createChartPath = (type: "total" | "flagged") => {
+  return dailyActivity
+    .map((day, index) => {
+      const x = (index / 6) * 700;
+      const y = 190 - (day[type] / maxActivity) * 180;
+
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+};
+
+const transactionPath = createChartPath("total");
+const flaggedPath = createChartPath("flagged");
+
+
   return (
     <div className="card chart-card">
       <div className="card-heading">
@@ -485,16 +550,22 @@ function ActivityChart() {
           <h2>Transaction activity</h2>
           <p>Volume and fraud detections over 7 days</p>
         </div>
-        <button className="select-btn">Last 7 days <span>⌄</span></button>
-      </div>
+      <span className="select-btn">
+        7 days ending {today.toLocaleDateString()}
+      </span>      
+</div>
       <div className="mt-5 flex items-center gap-5 text-[11px] text-slate-500">
         <span className="legend"><i className="bg-blue-500" /> Transactions</span>
         <span className="legend"><i className="bg-red-500" /> Flagged</span>
       </div>
       <div className="chart-wrap">
-        <div className="y-labels">
-          <span>4k</span><span>3k</span><span>2k</span><span>1k</span><span>0</span>
-        </div>
+      <div className="y-labels">
+        {[4, 3, 2, 1, 0].map((step) => (
+          <span key={step}>
+            {Math.round((maxActivity * step) / 4)}
+          </span>
+        ))}
+      </div>
         <svg viewBox="0 0 700 210" preserveAspectRatio="none" aria-label="Transaction activity chart">
           <defs>
             <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
@@ -505,19 +576,57 @@ function ActivityChart() {
           {[10, 55, 100, 145, 190].map((y) => (
             <line key={y} x1="0" y1={y} x2="700" y2={y} stroke="#e8edf5" strokeDasharray="4 5" />
           ))}
-          <path d="M0 161 C45 150 55 110 105 122 S175 150 220 116 S285 52 335 79 S410 144 460 105 S530 41 580 54 S650 89 700 30 L700 200 L0 200Z" fill="url(#area)" />
-          <path d="M0 161 C45 150 55 110 105 122 S175 150 220 116 S285 52 335 79 S410 144 460 105 S530 41 580 54 S650 89 700 30" fill="none" stroke="#2869f0" strokeWidth="3" />
-          <path d="M0 189 C80 184 115 190 180 179 S260 191 335 177 S420 182 480 169 S600 188 700 163" fill="none" stroke="#ef4654" strokeWidth="2" strokeDasharray="5 5" />
-          <circle cx="580" cy="54" r="5" fill="white" stroke="#2869f0" strokeWidth="3" />
+          <path
+            d={transactionPath}
+            fill="none"
+            stroke="#2869f0"
+            strokeWidth="3"
+          />          
+        <path
+          d={flaggedPath}
+          fill="none"
+          stroke="#ef4654"
+          strokeWidth="2"
+          strokeDasharray="5 5"
+        />          
         </svg>
-        <div className="x-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
-      </div>
+  <div className="x-labels">
+    {dailyActivity.map((day, index) => (
+      <span key={index}>{day.date}</span>
+    ))}
+    </div>      
+    </div>
     </div>
   );
 }
 
-function RiskDonut() {
-  return (
+function RiskDonut({
+  apiTransactions,
+}: {
+  apiTransactions: Transaction[];
+}) {
+const safeCount = apiTransactions.filter(
+  (transaction) =>
+    transaction.geographicAnalysis?.travelPossible === true
+).length;
+
+const highRiskCount = apiTransactions.filter(
+  (transaction) =>
+    transaction.geographicAnalysis?.travelPossible === false
+).length;
+
+const unevaluatedCount = apiTransactions.filter(
+  (transaction) =>
+    transaction.geographicAnalysis?.travelPossible === null ||
+    transaction.geographicAnalysis == null
+).length;
+
+const totalCount = apiTransactions.length;
+
+const safePercent = (safeCount / (totalCount || 1)) * 100;
+const unevaluatedPercent = (unevaluatedCount / (totalCount || 1)) * 100;
+
+    return (
     <div className="card chart-card">
       <div className="card-heading">
         <div>
@@ -527,15 +636,22 @@ function RiskDonut() {
         <button className="icon-btn !h-8 !w-8">•••</button>
       </div>
       <div className="flex min-h-[245px] items-center justify-center gap-8">
-        <div className="donut">
-          <div><b>12,847</b><span>Total</span></div>
+    <div
+      className="donut"
+      style={{
+        background: `conic-gradient(
+          #10b981 0% ${safePercent}%,
+          #f59e0b ${safePercent}% ${safePercent + unevaluatedPercent}%,
+          #ef4444 ${safePercent + unevaluatedPercent}% 100%
+        )`,
+      }}
+>        <div><b>{totalCount.toLocaleString()}</b><span>Total</span></div>        
         </div>
         <div className="space-y-4">
           {[
-            ["Safe", "11,928", "92.8%", "bg-emerald-500"],
-            ["Medium", "740", "5.8%", "bg-amber-400"],
-            ["High risk", "179", "1.4%", "bg-red-500"],
-          ].map(([label, value, percent, color]) => (
+            ["Safe", safeCount.toString(), `${(safeCount / (totalCount || 1) * 100).toFixed(1)}%`, "bg-emerald-500"],            
+            ["Not evaluated", unevaluatedCount.toString(), `${(unevaluatedCount / (totalCount || 1) * 100).toFixed(1)}%`, "bg-amber-400"],            ["High risk", highRiskCount.toString(), `${(highRiskCount / (totalCount || 1) * 100).toFixed(1)}%`, "bg-red-500"],         
+            ].map(([label, value, percent, color]) => (
             <div key={label} className="grid grid-cols-[10px_68px_45px] items-center gap-2 text-[11px]">
               <i className={`h-2 w-2 rounded-full ${color}`} />
               <span className="text-slate-500">{label}</span>
@@ -545,6 +661,7 @@ function RiskDonut() {
         </div>
       </div>
     </div>
+
   );
 }
 
@@ -626,11 +743,47 @@ function RecentTable({
     </div>
   );
 }
+
 function Dashboard({setPage, apiTransactions,
 }: {
   setPage: (page: Page) => void;
   apiTransactions: Transaction[];
 }) {
+
+  const safeTransactions = apiTransactions.filter(
+    (transaction) =>
+      transaction.geographicAnalysis?.travelPossible === true
+  ).length;
+
+  const flaggedTransactions = apiTransactions.filter(
+  (transaction) =>
+    transaction.geographicAnalysis?.travelPossible === false
+  ).length;
+
+const highRiskAlerts = apiTransactions.filter((transaction) => {
+  const analysis = transaction.geographicAnalysis;
+
+  if (!analysis || analysis.travelPossible !== false) {
+    return false;
+  }
+
+  const availableHours = analysis.availableMinutes / 60;
+
+  if (availableHours <= 0) {
+    return true;
+  }
+
+  const requiredSpeed = analysis.geographicDistance / availableHours;
+
+  return requiredSpeed > 1000;
+}).length;
+
+const todayTransactions = apiTransactions.filter(
+  (transaction) =>
+    new Date(transaction.transactionTimestamp).toDateString() ===
+    new Date().toDateString()
+).length;
+
   return (
     <>
       <div className="mb-5 flex items-center justify-between">
@@ -643,14 +796,14 @@ function Dashboard({setPage, apiTransactions,
         <button className="outline-btn"><Icon name="download" size={15} /> Export report</button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total transactions" value={apiTransactions.length.toString()} change="+12.5%" icon="card" tone="blue" foot="1,428 today" />
-        <StatCard label="Safe transactions" value="11,928" change="+8.2%" icon="check" tone="green" foot="92.8% approval rate" />
-        <StatCard label="Flagged transactions" value="919" change="-4.8%" icon="alert" tone="yellow" foot="7.2% of total volume" />
-        <StatCard label="High-risk alerts" value="179" change="+2.4%" icon="shield" tone="red" foot="3 require immediate action" />
-      </div>
+        <StatCard label="Total transactions" value={apiTransactions.length.toString()} change="" icon="card" tone="blue" foot={`${todayTransactions} today`} />        
+        <StatCard label="Safe transactions" value={safeTransactions.toString()} change="" icon="check" tone="green" foot="Travel assessed as feasible" />        
+        <StatCard label="Flagged transactions" value={flaggedTransactions.toString()} change="" icon="alert" tone="yellow" foot="Impossible travel detected" />        
+        <StatCard label="High-risk alerts" value={highRiskAlerts.toString()} change="" icon="shield" tone="red" foot="Requires speed above 1,000 km/h" />      
+        </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <ActivityChart />
-        <RiskDonut />
+      <ActivityChart apiTransactions={apiTransactions} />      
+      <RiskDonut apiTransactions={apiTransactions} />      
       </div>
       <div className="mt-4">
       <RecentTable
