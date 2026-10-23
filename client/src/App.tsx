@@ -237,12 +237,19 @@ const transactions = [
     reason: "Normal activity",
   },
 ];
-
-function RiskBadge({ risk }: { risk: string }) {
+function RiskBadge({
+  risk,
+}: {
+  risk: "Safe" | "Medium" | "High" | "Not Evaluated";
+}) {
   return (
     <span className={`risk-badge risk-${risk.toLowerCase()}`}>
       <span className="risk-dot" />
-      {risk === "Safe" ? "Low risk" : `${risk} risk`}
+      {risk === "Safe"
+        ? "Low risk"
+        : risk === "Not Evaluated"
+          ? "Not Evaluated"
+          : `${risk} risk`}    
     </span>
   );
 }
@@ -675,8 +682,12 @@ function RecentTable({
   full?: boolean;
   onOpen: () => void;
   apiTransactions: Transaction[];
-}) {
-  const rows = full ? apiTransactions : apiTransactions.slice(0, 4);  
+}) {  
+
+  const rows = full
+    ? [...apiTransactions].reverse()
+    : apiTransactions.slice(-4).reverse();
+
   return (
     <div className="card overflow-hidden">
       <div className="card-heading border-b border-slate-100 px-5 py-4">
@@ -732,8 +743,16 @@ function RecentTable({
                   </span>
                 </td>                
             <td>
-              <RiskBadge risk={transaction.simulatedFraudLabel ? "High" : "Safe"} />
-            </td>                
+                <RiskBadge
+                  risk={
+                    transaction.geographicAnalysis?.travelPossible === false
+                      ? "High"
+                      : transaction.geographicAnalysis?.travelPossible === true
+                        ? "Safe"
+                        : "Not Evaluated"
+                  }
+                />            
+              </td>                
             <td><button className="row-arrow" aria-label={`View ${transaction.transactionId}`}><Icon name="chevron" size={15} /></button></td>
               </tr>
             ))}
