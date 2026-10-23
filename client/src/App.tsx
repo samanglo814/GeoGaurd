@@ -245,11 +245,16 @@ function RiskBadge({
   return (
     <span className={`risk-badge risk-${risk.toLowerCase()}`}>
       <span className="risk-dot" />
-      {risk === "Safe"
-        ? "Low risk"
+
+    {risk === "Safe"
+      ? "Low risk"
+      : risk === "Medium"
+        ? "Needs Review"
         : risk === "Not Evaluated"
           ? "Not Evaluated"
-          : `${risk} risk`}    
+          : `${risk} risk`}
+
+
     </span>
   );
 }
@@ -743,15 +748,20 @@ function RecentTable({
                   </span>
                 </td>                
             <td>
-                <RiskBadge
-                  risk={
-                    transaction.geographicAnalysis?.travelPossible === false
-                      ? "High"
-                      : transaction.geographicAnalysis?.travelPossible === true
-                        ? "Safe"
-                        : "Not Evaluated"
-                  }
-                />            
+            <RiskBadge
+              risk={
+                transaction.geographicAnalysis?.travelPossible === false
+                  ? transaction.geographicAnalysis.availableMinutes <= 0 ||
+                    transaction.geographicAnalysis.geographicDistance /
+                      (transaction.geographicAnalysis.availableMinutes / 60) > 2000
+                    ? "High"
+                    : "Medium"
+                  : transaction.geographicAnalysis?.travelPossible === true
+                    ? "Safe"
+                    : "Not Evaluated"
+              }
+            />
+
               </td>                
             <td><button className="row-arrow" aria-label={`View ${transaction.transactionId}`}><Icon name="chevron" size={15} /></button></td>
               </tr>
@@ -774,10 +784,23 @@ function Dashboard({setPage, apiTransactions,
       transaction.geographicAnalysis?.travelPossible === true
   ).length;
 
-  const flaggedTransactions = apiTransactions.filter(
-  (transaction) =>
-    transaction.geographicAnalysis?.travelPossible === false
-  ).length;
+const flaggedTransactions = apiTransactions.filter((transaction) => {
+  const analysis = transaction.geographicAnalysis;
+
+  if (!analysis || analysis.travelPossible !== false) {
+    return false;
+  }
+
+  const availableHours = analysis.availableMinutes / 60;
+
+  if (availableHours <= 0) {
+    return false;
+  }
+
+  const requiredSpeed = analysis.geographicDistance / availableHours;
+
+  return requiredSpeed <= 2000;
+}).length;
 
 const highRiskAlerts = apiTransactions.filter((transaction) => {
   const analysis = transaction.geographicAnalysis;
@@ -794,7 +817,7 @@ const highRiskAlerts = apiTransactions.filter((transaction) => {
 
   const requiredSpeed = analysis.geographicDistance / availableHours;
 
-  return requiredSpeed > 1000;
+  return requiredSpeed > 2000;
 }).length;
 
 const todayTransactions = apiTransactions.filter(
@@ -817,8 +840,8 @@ const todayTransactions = apiTransactions.filter(
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total transactions" value={apiTransactions.length.toString()} change="" icon="card" tone="blue" foot={`${todayTransactions} today`} />        
         <StatCard label="Safe transactions" value={safeTransactions.toString()} change="" icon="check" tone="green" foot="Travel assessed as feasible" />        
-        <StatCard label="Flagged transactions" value={flaggedTransactions.toString()} change="" icon="alert" tone="yellow" foot="Impossible travel detected" />        
-        <StatCard label="High-risk alerts" value={highRiskAlerts.toString()} change="" icon="shield" tone="red" foot="Requires speed above 1,000 km/h" />      
+        <StatCard label="Flagged transactions" value={flaggedTransactions.toString()} change="" icon="alert" tone="yellow" foot="Needs review" />        
+        <StatCard label="High-risk alerts" value={highRiskAlerts.toString()} change="" icon="shield" tone="red" foot="Requires speed above 2,000 km/h" />      
         </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
       <ActivityChart apiTransactions={apiTransactions} />      
@@ -841,13 +864,99 @@ function Transactions({
   setPage: (page: Page) => void;
   apiTransactions: Transaction[];
 }) {  
+  const [activeTab, setActiveTab] = useState<"all" | "flagged" | "high">("all");
+  const filteredTransactions = apiTransactions.filter((transaction) => {
+  const analysis = transaction.geographicAnalysis;
+
+  if (activeTab === "all") {
+    return true;
+  }
+
+    if (activeTab === "flagged") {
+      if (!analysis || analysis.travelPossible !== false) {
+        return false;
+      }
+
+      const availableHours = analysis.availableMinutes / 60;
+
+      if (availableHours <= 0) {
+        return false;
+      }
+
+      const requiredSpeed = analysis.geographicDistance / availableHours;
+
+      return requiredSpeed <= 2000;
+    }
+
+  if (activeTab === "high") {
+    if (!analysis || analysis.travelPossible !== false) {
+      return false;
+    }
+
+    const availableHours = analysis.availableMinutes / 60;
+
+    if (availableHours <= 0) {
+      return true;
+    }
+
+    const requiredSpeed = analysis.geographicDistance / availableHours;
+
+    return requiredSpeed > 2000;
+  }
+
+  return false;
+});
   return (
     <>
       <div className="toolbar">
         <div className="flex gap-2">
-          <button className="tab active">All transactions <span>12,847</span></button>
-          <button className="tab">Flagged <span>919</span></button>
-          <button className="tab">High risk <span>179</span></button>
+
+<button
+  className={`tab ${activeTab === "all" ? "active" : ""}`}
+  onClick={() => setActiveTab("all")}
+>
+  All transactions <span>{apiTransactions.length}</span>
+</button>
+
+<button
+  className={`tab ${activeTab === "flagged" ? "active" : ""}`}
+  onClick={() => setActiveTab("flagged")}
+>
+  Flagged <span>
+
+
+{apiTransactions.filter((transaction) => {
+  const analysis = transaction.geographicAnalysis;
+
+  if (!analysis || analysis.travelPossible !== false) {
+    return false;
+  }
+
+  const availableHours = analysis.availableMinutes / 60;
+
+  if (availableHours <= 0) {
+    return false;
+  }
+
+  const requiredSpeed = analysis.geographicDistance / availableHours;
+
+  return requiredSpeed <= 2000;
+}).length}
+
+  </span>
+</button>
+
+    <button className="tab">
+      High risk <span>
+        {apiTransactions.filter(
+          (transaction) =>
+            transaction.geographicAnalysis?.travelPossible === false &&
+            transaction.geographicAnalysis.geographicDistance /
+              (transaction.geographicAnalysis.availableMinutes / 60) > 1000
+        ).length}
+      </span>
+    </button>
+
         </div>
         <div className="flex gap-2">
           <button className="outline-btn"><Icon name="filter" size={15} /> Filters</button>
@@ -856,14 +965,24 @@ function Transactions({
       </div>
       <div className="mt-4">
       <RecentTable
-        title="All transactions"
+        title={
+          activeTab === "all"
+            ? "All transactions"
+            : activeTab === "flagged"
+              ? "Flagged transactions"
+              : "High risk transactions"
+        }
         full
         onOpen={() => setPage("details")}
-        apiTransactions={apiTransactions}
+        apiTransactions={filteredTransactions}
       />
+
       </div>
       <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-        <span>Showing 1–6 of 12,847 transactions</span>
+      <span>
+        Showing {apiTransactions.length > 0 ? 1 : 0}–
+        {apiTransactions.length} of {apiTransactions.length} transactions
+      </span>
         <div className="flex gap-1">
           <button className="page-btn">‹</button>
           <button className="page-btn active">1</button>
