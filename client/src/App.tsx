@@ -682,12 +682,14 @@ function RecentTable({
   full = false,
   onOpen,
   apiTransactions,
+  onSelectTransaction,
 }: {
   title?: string;
   full?: boolean;
   onOpen: () => void;
   apiTransactions: Transaction[];
-}) {  
+  onSelectTransaction?: (transaction: Transaction) => void;
+}) {
 
   const rows = full
     ? [...apiTransactions].reverse()
@@ -698,7 +700,12 @@ function RecentTable({
       <div className="card-heading border-b border-slate-100 px-5 py-4">
         <div>
           <h2>{title}</h2>
-          <p>{full ? "12,847 transactions found" : "Latest activity across all accounts"}</p>
+        <p>
+          {full
+            ? `${apiTransactions.length} transactions found`
+            : "Latest activity across all accounts"}
+        </p>
+
         </div>
         {!full && <button className="link-btn" onClick={onOpen}>View all <Icon name="arrow" size={14} /></button>}
       </div>
@@ -763,7 +770,17 @@ function RecentTable({
             />
 
               </td>                
-            <td><button className="row-arrow" aria-label={`View ${transaction.transactionId}`}><Icon name="chevron" size={15} /></button></td>
+            <td>
+              <button
+                className="row-arrow"
+                aria-label={`View ${transaction.transactionId}`}
+                onClick={() => onSelectTransaction?.(transaction)}
+              >
+                <Icon name="chevron" size={15} />
+              </button>
+            </td>
+
+
               </tr>
             ))}
           </tbody>
@@ -860,10 +877,13 @@ const todayTransactions = apiTransactions.filter(
 function Transactions({
   setPage,
   apiTransactions,
+  onSelectTransaction,
 }: {
   setPage: (page: Page) => void;
   apiTransactions: Transaction[];
-}) {  
+  onSelectTransaction: (transaction: Transaction) => void;
+}) {
+
   const [activeTab, setActiveTab] = useState<"all" | "flagged" | "high">("all");
   const filteredTransactions = apiTransactions.filter((transaction) => {
   const analysis = transaction.geographicAnalysis;
@@ -946,16 +966,30 @@ function Transactions({
   </span>
 </button>
 
-    <button className="tab">
-      High risk <span>
-        {apiTransactions.filter(
-          (transaction) =>
-            transaction.geographicAnalysis?.travelPossible === false &&
-            transaction.geographicAnalysis.geographicDistance /
-              (transaction.geographicAnalysis.availableMinutes / 60) > 1000
-        ).length}
-      </span>
-    </button>
+  <button
+    className={`tab ${activeTab === "high" ? "active" : ""}`}
+    onClick={() => setActiveTab("high")}
+  >
+    High risk <span>
+      {apiTransactions.filter((transaction) => {
+        const analysis = transaction.geographicAnalysis;
+
+        if (!analysis || analysis.travelPossible !== false) {
+          return false;
+        }
+
+        const availableHours = analysis.availableMinutes / 60;
+
+        if (availableHours <= 0) {
+          return true;
+        }
+
+        const requiredSpeed = analysis.geographicDistance / availableHours;
+
+        return requiredSpeed > 2000;
+      }).length}
+    </span>
+  </button>
 
         </div>
         <div className="flex gap-2">
@@ -964,6 +998,7 @@ function Transactions({
         </div>
       </div>
       <div className="mt-4">
+
       <RecentTable
         title={
           activeTab === "all"
@@ -975,6 +1010,7 @@ function Transactions({
         full
         onOpen={() => setPage("details")}
         apiTransactions={filteredTransactions}
+        onSelectTransaction={onSelectTransaction}
       />
 
       </div>
@@ -995,8 +1031,14 @@ function Transactions({
   );
 }
 
-function Alerts({ setPage }: { setPage: (page: Page) => void }) {
-  const alerts = [
+function Alerts({
+  setPage,
+  apiTransactions,
+}: {
+  setPage: (page: Page) => void;
+  apiTransactions: Transaction[];
+}) {
+const alerts = [
     { title: "Impossible Travel Detected", merchant: "Apple Store · $2,499.00", where: "New York → London", when: "8 minutes ago", severity: "Critical", reason: "5,570 km apart · 1h 24m available", icon: "route" as IconName },
     { title: "Impossible Travel Detected", merchant: "CryptoHub Exchange · $5,200.00", where: "Boston → Lagos", when: "2 hours ago", severity: "High", reason: "8,450 km apart · 2h 11m available", icon: "route" as IconName },
     { title: "Travel Time Review", merchant: "Lufthansa · $1,840.00", where: "Paris → Berlin", when: "4 hours ago", severity: "Medium", reason: "878 km apart · timestamp comparison pending", icon: "clock" as IconName },
@@ -1058,8 +1100,14 @@ function DetailItem({ label, children }: { label: string; children: ReactNode })
   return <div className="detail-item"><span>{label}</span><b>{children}</b></div>;
 }
 
-function TransactionDetails({ setPage }: { setPage: (page: Page) => void }) {
-  return (
+function TransactionDetails({
+  setPage,
+  selectedTransaction,
+}: {
+  setPage: (page: Page) => void;
+  selectedTransaction: Transaction | null;
+}) {
+return (
     <>
       <button className="back-btn" onClick={() => setPage("transactions")}>‹ Back to transactions</button>
       <div className="mt-3 threat-banner">
@@ -1171,6 +1219,8 @@ export default function App() {
 
 const [apiTransactions, setApiTransactions] = useState<Transaction[]>([]);
 
+const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
 useEffect(() => {
 fetch("http://127.0.0.1:3000/api/transactions")
     .then((response) => response.json())
@@ -1199,10 +1249,19 @@ fetch("http://127.0.0.1:3000/api/transactions")
             <Transactions
               setPage={setPage}
               apiTransactions={apiTransactions}
+              onSelectTransaction={(transaction) => {
+                setSelectedTransaction(transaction);
+                setPage("details");
+              }}
             />
-          )}          
-          {page === "alerts" && <Alerts setPage={setPage} />}
-          {page === "details" && <TransactionDetails setPage={setPage} />}
+          )}      
+          {page === "alerts" && <Alerts setPage={setPage} apiTransactions={apiTransactions} />}
+          {page === "details" && (
+            <TransactionDetails
+              setPage={setPage}
+              selectedTransaction={selectedTransaction}
+            />
+          )}
           {page === "geographic" && <Geographic />}
         </main>
       </div>
