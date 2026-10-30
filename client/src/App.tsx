@@ -1107,6 +1107,11 @@ function TransactionDetails({
   setPage: (page: Page) => void;
   selectedTransaction: Transaction | null;
 }) {
+
+if (!selectedTransaction) {
+  return <p>No transaction selected.</p>;
+}
+
 return (
     <>
       <button className="back-btn" onClick={() => setPage("transactions")}>‹ Back to transactions</button>
@@ -1125,12 +1130,27 @@ return (
               <RiskBadge risk="High" />
             </div>
             <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-5">
-              <DetailItem label="Merchant">Apple Store</DetailItem>
-              <DetailItem label="Amount"><span className="text-xl">$2,499.00</span></DetailItem>
-              <DetailItem label="Transaction ID">TXN-845291</DetailItem>
+              <DetailItem label="Merchant">
+              {selectedTransaction.merchantInfo.merchantName}
+              </DetailItem>
+              <DetailItem label="Amount">
+                <span className="text-xl">
+                  ${selectedTransaction.amountSpent.toFixed(2)}
+                </span>
+              </DetailItem>
+
+              <DetailItem label="Transaction ID">
+                {selectedTransaction.transactionId}
+              </DetailItem>
               <DetailItem label="Transaction type">Online purchase</DetailItem>
-              <DetailItem label="Timestamp">May 28, 2025 · 10:42 AM</DetailItem>
-              <DetailItem label="Location">London, United Kingdom</DetailItem>
+              <DetailItem label="Timestamp">
+                {new Date(selectedTransaction.transactionTimestamp).toLocaleString()}
+              </DetailItem>
+
+              <DetailItem label="Location">
+                {selectedTransaction.merchantInfo.merchantCity},{" "}
+                {selectedTransaction.merchantInfo.merchantCountry}
+              </DetailItem>
               <DetailItem label="Payment method">Visa ending in 4821</DetailItem>
               <DetailItem label="Device">Chrome · macOS</DetailItem>
             </div>
@@ -1149,7 +1169,15 @@ return (
             <div className="feasibility-grid mt-5">
               <div><span>Previous location</span><b>New York, US</b><small>9:18 AM</small></div>
               <div><span>Current location</span><b>London, UK</b><small>10:42 AM</small></div>
-              <div><span>Geographic distance</span><b>5,570 km</b><small>3,461 miles</small></div>
+              <div>
+                <span>Geographic distance</span>
+                <b>
+                  {selectedTransaction.geographicAnalysis
+                    ? `${selectedTransaction.geographicAnalysis.geographicDistance.toFixed(1)} km`
+                    : "Not evaluated"}
+                </b>
+                <small>Distance between consecutive transactions</small>
+              </div>
               <div><span>Available travel time</span><b className="text-red-600">1h 24m</b><small>Timestamp difference</small></div>
               <div><span>Required travel time</span><b>7h 15m</b><small>Minimum route time</small></div>
               <div><span>Travel Possible</span><b className="text-red-600">No</b><small>Required time exceeds available time</small></div>
@@ -1193,7 +1221,11 @@ function Geographic() {
               <div><span>Previous location</span><b>New York, US</b><small>9:18 AM</small></div>
               <div><span>Current location</span><b>London, UK</b><small>10:42 AM</small></div>
               <div><span>Geographic distance</span><b>5,570 km</b><small>3,461 miles</small></div>
-              <div><span>Available travel time</span><b className="text-red-600">1h 24m</b><small>Timestamp difference</small></div>
+              <div>
+                <span>Available travel time</span>
+                <b className="text-red-600">1h 24m</b>
+                <small>Timestamp difference</small>
+              </div>
               <div><span>Required travel time</span><b>7h 15m</b><small>Minimum route time</small></div>
               <div><span>Travel Possible</span><b className="text-red-600">No</b><small>Required time exceeds available time</small></div>
             </div>
