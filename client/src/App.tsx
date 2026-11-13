@@ -1103,9 +1103,11 @@ function DetailItem({ label, children }: { label: string; children: ReactNode })
 function TransactionDetails({
   setPage,
   selectedTransaction,
+  previousTransaction,
 }: {
   setPage: (page: Page) => void;
   selectedTransaction: Transaction | null;
+  previousTransaction: Transaction | null;
 }) {
 
 if (!selectedTransaction) {
@@ -1167,8 +1169,35 @@ return (
           <div className="card p-5">
             <div className="card-heading"><div><h2>Impossible-travel check</h2><p>Timestamp and geographic location comparison</p></div></div>
             <div className="feasibility-grid mt-5">
-              <div><span>Previous location</span><b>New York, US</b><small>9:18 AM</small></div>
-              <div><span>Current location</span><b>London, UK</b><small>10:42 AM</small></div>
+            <div>
+              <span>Previous location</span>
+              <b>
+                {previousTransaction
+                  ? `${previousTransaction.merchantInfo.merchantCity}, ${previousTransaction.merchantInfo.merchantCountry}`
+                  : "Not available"}
+              </b>
+              <small>
+                {previousTransaction
+                  ? new Date(previousTransaction.transactionTimestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "No previous transaction"}
+              </small>
+            </div>
+              <div>
+              <span>Current location</span>
+              <b>
+                {selectedTransaction.merchantInfo.merchantCity},{" "}
+                {selectedTransaction.merchantInfo.merchantCountry}
+              </b>
+              <small>
+                {new Date(selectedTransaction.transactionTimestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </small>
+            </div>
               <div>
                 <span>Geographic distance</span>
                 <b>
@@ -1178,9 +1207,41 @@ return (
                 </b>
                 <small>Distance between consecutive transactions</small>
               </div>
-              <div><span>Available travel time</span><b className="text-red-600">1h 24m</b><small>Timestamp difference</small></div>
-              <div><span>Required travel time</span><b>7h 15m</b><small>Minimum route time</small></div>
-              <div><span>Travel Possible</span><b className="text-red-600">No</b><small>Required time exceeds available time</small></div>
+              <div>
+                <span>Available travel time</span>
+                <b>
+                  {selectedTransaction.geographicAnalysis
+                    ? `${selectedTransaction.geographicAnalysis.availableMinutes.toFixed(1)} minutes`
+                    : "Not evaluated"}
+                </b>
+                <small>Time between consecutive transactions</small>
+              </div>
+              <div>
+                <span>Required travel time</span>
+                <b>
+                  {selectedTransaction.geographicAnalysis?.requiredTravelMinutes != null
+                    ? `${selectedTransaction.geographicAnalysis.requiredTravelMinutes.toFixed(1)} minutes`
+                    : "Not available"}
+                </b>
+                <small>Estimated minimum travel time</small>
+              </div>
+            <div>
+              <span>Travel Possible</span>
+              <b
+                className={
+                  selectedTransaction.geographicAnalysis?.travelPossible === false
+                    ? "text-red-600"
+                    : "text-green-600"
+                }
+              >
+                {selectedTransaction.geographicAnalysis?.travelPossible === true
+                  ? "Yes"
+                  : selectedTransaction.geographicAnalysis?.travelPossible === false
+                    ? "No"
+                    : "Not evaluated"}
+              </b>
+              <small>Geographic feasibility assessment</small>
+            </div>
             </div>
           </div>
           <div className="card p-5">
@@ -1218,8 +1279,18 @@ function Geographic() {
           <div className="card p-5">
             <h2 className="text-sm font-extrabold">Travel feasibility</h2>
             <div className="feasibility-grid mt-5">
-              <div><span>Previous location</span><b>New York, US</b><small>9:18 AM</small></div>
-              <div><span>Current location</span><b>London, UK</b><small>10:42 AM</small></div>
+            <div>
+            <span>Previous location</span>
+            <b>New York, US</b>
+            <small>9:18 AM</small>
+          </div>
+
+          <div>
+            <span>Current location</span>
+            <b>London, UK</b>
+            <small>10:42 AM</small>
+          </div>
+
               <div><span>Geographic distance</span><b>5,570 km</b><small>3,461 miles</small></div>
               <div>
                 <span>Available travel time</span>
@@ -1252,6 +1323,19 @@ export default function App() {
 const [apiTransactions, setApiTransactions] = useState<Transaction[]>([]);
 
 const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+const previousTransaction = selectedTransaction
+  ? [...apiTransactions]
+      .filter(
+        (transaction) =>
+          new Date(transaction.transactionTimestamp).getTime() <
+          new Date(selectedTransaction.transactionTimestamp).getTime()
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.transactionTimestamp).getTime() -
+          new Date(a.transactionTimestamp).getTime()
+      )[0] ?? null
+  : null;
 
 useEffect(() => {
 fetch("http://127.0.0.1:3000/api/transactions")
@@ -1292,6 +1376,7 @@ fetch("http://127.0.0.1:3000/api/transactions")
             <TransactionDetails
               setPage={setPage}
               selectedTransaction={selectedTransaction}
+              previousTransaction={previousTransaction}
             />
           )}
           {page === "geographic" && <Geographic />}
