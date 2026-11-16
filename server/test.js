@@ -1,4 +1,4 @@
-//import supabase from "./supabaseClient.js";
+import supabase from "./supabaseClient.js";
 import { generateTransaction } from "./data/sampleTransaction.js"; 
 import { analyzeTransactionTravel } from "./geographicAnalysis.js";
 
@@ -8,7 +8,7 @@ let previousTransaction = null;
 
 /* Start with no preivous transaction, generate one, format for Supabase, 
 insert into Supabse, remember as previous transaction, repeat 20 times, then query for all transactions with simulated_fraud_label = true and log to console */
-/*for (let i = 0; i < 20; i++)
+for (let i = 0; i < 50; i++)
 {
     const transaction = generateTransaction(previousTransaction);
     const databaseTransaction = {
@@ -32,41 +32,19 @@ insert into Supabse, remember as previous transaction, repeat 20 times, then que
     accuracy_meters: transaction.deviceInfo.accuracyMeters,
     device_timestamp: transaction.deviceInfo.deviceTimestamp 
     };
-    const { error } = await supabase
-        .from("transactions")
-        .insert([databaseTransaction]);
-    previousTransaction = transaction;
-}*/
-
-/*
-const { data, error } = await supabase
+const { error } = await supabase
     .from("transactions")
-    .select("*") // retrieve all columns
-    // Filtering data 
-    //.eq("simulated_fraud_label", true)
-    //.eq("scenario_type", "impossible travel");
-    .eq("transaction_type", "atm")
-console.log(data);
-console.log(error);
+    .insert([databaseTransaction]);
 
-*/
+if (error) {
+    console.error("Insert failed:", error.message);
+    break;
+}
 
-// Geographic analysis testing
 
-const firstTransaction = generateTransaction();
+previousTransaction = transaction;
 
-const secondTransaction = generateTransaction(firstTransaction);
+    console.log(`Inserted transaction ${i + 1}/50`);
+}
 
-console.log("First Transaction:");
-console.log(firstTransaction);
-
-console.log("\nSecond Transaction:");
-console.log(secondTransaction);
-
-const analysis = await analyzeTransactionTravel(
-    firstTransaction,
-    secondTransaction
-);
-
-console.log("\nGeographic Analysis:");
-console.log(analysis);
+console.log("Finished generating transactions!");

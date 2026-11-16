@@ -858,7 +858,7 @@ const todayTransactions = apiTransactions.filter(
         <StatCard label="Total transactions" value={apiTransactions.length.toString()} change="" icon="card" tone="blue" foot={`${todayTransactions} today`} />        
         <StatCard label="Safe transactions" value={safeTransactions.toString()} change="" icon="check" tone="green" foot="Travel assessed as feasible" />        
         <StatCard label="Flagged transactions" value={flaggedTransactions.toString()} change="" icon="alert" tone="yellow" foot="Needs review" />        
-        <StatCard label="High-risk alerts" value={highRiskAlerts.toString()} change="" icon="shield" tone="red" foot="Requires speed above 2,000 km/h" />      
+        <StatCard label="High-risk alerts" value={highRiskAlerts.toString()} change="" icon="shield" tone="red" foot="Travel speed exceeds realistic limits" />      
         </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
       <ActivityChart apiTransactions={apiTransactions} />      
@@ -1076,7 +1076,18 @@ const alerts = [
   );
 }
 
-function MiniMap({ large = false }: { large?: boolean }) {
+
+function MiniMap({
+  large = false,
+  selectedTransaction = null,
+  previousTransaction = null,
+}: {
+  large?: boolean;
+  selectedTransaction?: Transaction | null;
+  previousTransaction?: Transaction | null;
+}) {
+  const distance = selectedTransaction?.geographicAnalysis?.geographicDistance;
+
   return (
     <div className={`map-canvas ${large ? "large" : ""}`}>
       <div className="map-grid" />
@@ -1088,13 +1099,35 @@ function MiniMap({ large = false }: { large?: boolean }) {
         <circle cx="195" cy="213" r="8" fill="#2869f0" stroke="white" strokeWidth="5" />
         <circle cx="654" cy="160" r="9" fill="#e84453" stroke="white" strokeWidth="5" />
       </svg>
-      <div className="map-label from"><b>Previous</b><span>New York, US</span></div>
-      <div className="map-label to"><b>Current</b><span>London, UK</span></div>
-      <div className="distance-pill"><Icon name="route" size={14} /> 5,570 km</div>
+
+      <div className="map-label from">
+        <b>Previous</b>
+        <span>
+          {previousTransaction
+            ? `${previousTransaction.merchantInfo.merchantCity}, ${previousTransaction.merchantInfo.merchantCountry}`
+            : "Not available"}
+        </span>
+      </div>
+
+      <div className="map-label to">
+        <b>Current</b>
+        <span>
+          {selectedTransaction
+            ? `${selectedTransaction.merchantInfo.merchantCity}, ${selectedTransaction.merchantInfo.merchantCountry}`
+            : "Not available"}
+        </span>
+      </div>
+
+      <div className="distance-pill">
+        <Icon name="route" size={14} />
+        {distance != null ? ` ${distance.toFixed(1)} km` : " Not available"}
+      </div>
+
       {large && <div className="map-controls"><button>+</button><button>−</button></div>}
     </div>
   );
 }
+
 
 function DetailItem({ label, children }: { label: string; children: ReactNode }) {
   return <div className="detail-item"><span>{label}</span><b>{children}</b></div>;
@@ -1162,7 +1195,12 @@ return (
               <div><h2>Geographic journey</h2><p>Location change since previous transaction</p></div>
               <button className="link-btn" onClick={() => setPage("geographic")}>Full analysis <Icon name="arrow" size={14} /></button>
             </div>
-            <div className="mt-4"><MiniMap /></div>
+          <div className="mt-4">
+            <MiniMap
+              selectedTransaction={selectedTransaction}
+              previousTransaction={previousTransaction}
+            />
+          </div>
           </div>
         </div>
         <div className="space-y-4">
@@ -1257,8 +1295,13 @@ return (
   );
 }
 
-function Geographic() {
-  return (
+function Geographic({
+  selectedTransaction,
+  previousTransaction,
+}: {
+  selectedTransaction: Transaction | null;
+  previousTransaction: Transaction | null;
+}) {  return (
     <>
       <div className="threat-banner">
         <div className="flex items-center gap-4">
@@ -1273,17 +1316,32 @@ function Geographic() {
             <div><h2>Transaction location path</h2><p>Previous and current transaction coordinates</p></div>
             <button className="select-btn">Satellite view <span>⌄</span></button>
           </div>
-          <MiniMap large />
+          <MiniMap
+            large
+            selectedTransaction={selectedTransaction}
+            previousTransaction={previousTransaction}
+          />
         </div>
         <div className="space-y-4">
           <div className="card p-5">
             <h2 className="text-sm font-extrabold">Travel feasibility</h2>
             <div className="feasibility-grid mt-5">
             <div>
-            <span>Previous location</span>
-            <b>New York, US</b>
-            <small>9:18 AM</small>
-          </div>
+              <span>Previous location</span>
+              <b>
+                {previousTransaction
+                  ? `${previousTransaction.merchantInfo.merchantCity}, ${previousTransaction.merchantInfo.merchantCountry}`
+                  : "Not available"}
+              </b>
+              <small>
+                {previousTransaction
+                  ? new Date(previousTransaction.transactionTimestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "No previous transaction"}
+              </small>
+            </div>
 
           <div>
             <span>Current location</span>
@@ -1379,7 +1437,12 @@ fetch("http://127.0.0.1:3000/api/transactions")
               previousTransaction={previousTransaction}
             />
           )}
-          {page === "geographic" && <Geographic />}
+        {page === "geographic" && (
+          <Geographic
+            selectedTransaction={selectedTransaction}
+            previousTransaction={previousTransaction}
+          />
+        )}
         </main>
       </div>
     </div>
