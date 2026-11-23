@@ -1306,7 +1306,28 @@ function Geographic({
       <div className="threat-banner">
         <div className="flex items-center gap-4">
           <span><Icon name="route" size={24} /></span>
-          <div><h2>Impossible Travel Detected</h2><p>New York to London in 1 hour 24 minutes is not physically possible.</p></div>
+
+        <div>
+          <h2>
+            {selectedTransaction?.geographicAnalysis?.travelPossible === false
+              ? "Impossible Travel Detected"
+              : selectedTransaction?.geographicAnalysis?.travelPossible === true
+                ? "Travel Feasible"
+                : "Travel Not Evaluated"}
+          </h2>
+
+          <p>
+            {selectedTransaction && previousTransaction
+              ? `${previousTransaction.merchantInfo.merchantCity} to ${selectedTransaction.merchantInfo.merchantCity} in ${selectedTransaction.geographicAnalysis?.availableMinutes.toFixed(1) ?? "unknown"} minutes. ${
+                  selectedTransaction.geographicAnalysis?.travelPossible === false
+                    ? "This travel is not physically feasible."
+                    : selectedTransaction.geographicAnalysis?.travelPossible === true
+                      ? "This travel is geographically feasible."
+                      : "Travel feasibility has not been evaluated."
+                }`
+              : "Select a transaction to view its geographic analysis."}
+          </p>
+        </div>
         </div>
         <span className="severity critical">Critical risk</span>
       </div>
@@ -1343,28 +1364,137 @@ function Geographic({
               </small>
             </div>
 
-          <div>
-            <span>Current location</span>
-            <b>London, UK</b>
-            <small>10:42 AM</small>
-          </div>
+            <div>
+              <span>Current location</span>
+              <b>
+                {selectedTransaction
+                  ? `${selectedTransaction.merchantInfo.merchantCity}, ${selectedTransaction.merchantInfo.merchantCountry}`
+                  : "Not available"}
+              </b>
+              <small>
+                {selectedTransaction
+                  ? new Date(selectedTransaction.transactionTimestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "No transaction selected"}
+              </small>
+            </div>
 
-              <div><span>Geographic distance</span><b>5,570 km</b><small>3,461 miles</small></div>
+            <div>
+              <span>Geographic distance</span>
+              <b>
+                {selectedTransaction?.geographicAnalysis
+                  ? `${selectedTransaction.geographicAnalysis.geographicDistance.toFixed(1)} km`
+                  : "Not available"}
+              </b>
+              <small>Distance between consecutive transactions</small>
+            </div>
+
               <div>
                 <span>Available travel time</span>
-                <b className="text-red-600">1h 24m</b>
-                <small>Timestamp difference</small>
+                <b>
+                  {selectedTransaction?.geographicAnalysis
+                    ? `${selectedTransaction.geographicAnalysis.availableMinutes.toFixed(1)} minutes`
+                    : "Not available"}
+                </b>
+                <small>Time between consecutive transactions</small>
               </div>
-              <div><span>Required travel time</span><b>7h 15m</b><small>Minimum route time</small></div>
-              <div><span>Travel Possible</span><b className="text-red-600">No</b><small>Required time exceeds available time</small></div>
+              <div>
+                <span>Required travel time</span>
+                <b>
+                  {selectedTransaction?.geographicAnalysis?.requiredTravelMinutes != null
+                    ? `${selectedTransaction.geographicAnalysis.requiredTravelMinutes.toFixed(1)} minutes`
+                    : "Not available"}
+                </b>
+                <small>Estimated minimum travel time</small>
+              </div>
+            <div>
+              <span>Travel Possible</span>
+              <b
+                className={
+                  selectedTransaction?.geographicAnalysis?.travelPossible === false
+                    ? "text-red-600"
+                    : "text-green-600"
+                }
+              >
+                {selectedTransaction?.geographicAnalysis?.travelPossible === true
+                  ? "Yes"
+                  : selectedTransaction?.geographicAnalysis?.travelPossible === false
+                    ? "No"
+                    : "Not evaluated"}
+              </b>
+              <small>Geographic feasibility assessment</small>
+            </div>
             </div>
           </div>
           <div className="card p-5">
-            <h2 className="text-sm font-extrabold">Location timeline</h2>
+
+<div className="timeline mt-5">
+  <div className="timeline-item safe">
+    <i />
+    <div>
+      <b>
+        {previousTransaction
+          ? `${previousTransaction.merchantInfo.merchantCity}, ${previousTransaction.merchantInfo.merchantCountry}`
+          : "Not available"}
+      </b>
+      <span>
+        {previousTransaction
+          ? `${previousTransaction.merchantInfo.merchantName} · $${previousTransaction.amountSpent.toFixed(2)}`
+          : "No previous transaction"}
+      </span>
+      <small>
+        {previousTransaction
+          ? new Date(previousTransaction.transactionTimestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "No timestamp available"}
+      </small>
+    </div>
+  </div>
+
+  <div className="timeline-travel">
+    <span>
+      {selectedTransaction?.geographicAnalysis
+        ? `${selectedTransaction.geographicAnalysis.availableMinutes.toFixed(1)} minutes elapsed`
+        : "Not available"}
+    </span>
+    <b>
+      {selectedTransaction?.geographicAnalysis
+        ? `${selectedTransaction.geographicAnalysis.geographicDistance.toFixed(1)} km`
+        : "Not available"}
+    </b>
+  </div>
+
+      <div className="timeline-item danger">
+        <i />
+        <div>
+          <b>
+            {selectedTransaction
+              ? `${selectedTransaction.merchantInfo.merchantCity}, ${selectedTransaction.merchantInfo.merchantCountry}`
+              : "Not available"}
+          </b>
+          <span>
+            {selectedTransaction
+              ? `${selectedTransaction.merchantInfo.merchantName} · $${selectedTransaction.amountSpent.toFixed(2)}`
+              : "No transaction selected"}
+          </span>
+          <small>
+            {selectedTransaction
+              ? new Date(selectedTransaction.transactionTimestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "No timestamp available"}
+          </small>
+        </div>
+      </div>
+    </div>
+
+
             <div className="timeline mt-5">
-              <div className="timeline-item safe"><i /><div><b>New York, United States</b><span>Whole Foods · $128.42</span><small>9:18 AM · Verified location</small></div></div>
-              <div className="timeline-travel"><span>1h 24m elapsed</span><b>5,570 km</b></div>
-              <div className="timeline-item danger"><i /><div><b>London, United Kingdom</b><span>Apple Store · $2,499.00</span><small>10:42 AM · Suspicious location</small></div></div>
             </div>
           </div>
           <div className="insight-box"><Icon name="shield" /><div><b>Detection basis</b><span>The required route time is longer than the time available between the two transaction timestamps.</span></div></div>
@@ -1381,6 +1511,16 @@ export default function App() {
 const [apiTransactions, setApiTransactions] = useState<Transaction[]>([]);
 
 const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
+const activeTransaction =
+  selectedTransaction ??
+  [...apiTransactions].sort(
+    (a, b) =>
+      new Date(b.transactionTimestamp).getTime() -
+      new Date(a.transactionTimestamp).getTime()
+  )[0] ??
+  null;
+
 const previousTransaction = selectedTransaction
   ? [...apiTransactions]
       .filter(
@@ -1437,10 +1577,25 @@ fetch("http://127.0.0.1:3000/api/transactions")
               previousTransaction={previousTransaction}
             />
           )}
+
         {page === "geographic" && (
           <Geographic
-            selectedTransaction={selectedTransaction}
-            previousTransaction={previousTransaction}
+            selectedTransaction={activeTransaction}
+            previousTransaction={
+              activeTransaction
+                ? [...apiTransactions]
+                    .filter(
+                      (transaction) =>
+                        new Date(transaction.transactionTimestamp).getTime() <
+                        new Date(activeTransaction.transactionTimestamp).getTime()
+                    )
+                    .sort(
+                      (a, b) =>
+                        new Date(b.transactionTimestamp).getTime() -
+                        new Date(a.transactionTimestamp).getTime()
+                    )[0] ?? null
+                : null
+            }
           />
         )}
         </main>
