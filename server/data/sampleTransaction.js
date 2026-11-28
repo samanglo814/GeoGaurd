@@ -46,7 +46,16 @@ function getRandomLocation()
 {
     const randomInt = Math.floor(Math.random() * locations.length);
     const randomLocation = locations[randomInt];
-    return randomLocation;
+
+    // Generate slightly different coordinates within the city
+    const latitudeOffset = (Math.random() - 0.5) * 0.04;
+    const longitudeOffset = (Math.random() - 0.5) * 0.04;
+
+    return {
+        ...randomLocation,
+        latitude: randomLocation.latitude + latitudeOffset,
+        longitude: randomLocation.longitude + longitudeOffset
+    };
 }
 
 // Randomly generate merchant and device locations, transaction type, and amount spent
@@ -108,7 +117,17 @@ function generateTransaction(previousTransaction = null)
     // If the scenario type is "normal", set the device location to be the same as the merchant location
     if (randomScenarioType === "normal")
     {
-        deviceLocation = merchantLocation;
+        // Keep normal transactions within the same city
+        if (previousTransaction !== null)
+        {
+            do
+            {
+                merchantLocation = getRandomLocation();
+            }
+            while (merchantLocation.city !== previousTransaction.merchantInfo.merchantCity);
+        }
+
+    deviceLocation = merchantLocation;
 
         // Only allow in-person transaction types for normal scenarios
         randomTransactionType = inPersonTransactionTypes[Math.floor(Math.random() * inPersonTransactionTypes.length)];
@@ -218,17 +237,3 @@ function generateTransaction(previousTransaction = null)
 }
 
 export { generateTransaction };
-
-let previousTransaction = null;
-
-// Generating many random transactions for testing
-/*
-for (let i = 0; i < 20; i++) 
-{
-    const newTransaction = generateTransaction(previousTransaction);
-    console.log(newTransaction);
-    previousTransaction = newTransaction;
-
-
-
-}*/

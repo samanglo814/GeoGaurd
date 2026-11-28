@@ -1303,7 +1303,15 @@ function Geographic({
   previousTransaction: Transaction | null;
 }) {  return (
     <>
-      <div className="threat-banner">
+        <div
+          className={`threat-banner ${
+            selectedTransaction?.geographicAnalysis?.travelPossible === true
+              ? "feasible"
+              : selectedTransaction?.geographicAnalysis?.travelPossible === false
+                ? ""
+                : "unevaluated"
+          }`}
+        >
         <div className="flex items-center gap-4">
           <span><Icon name="route" size={24} /></span>
 
@@ -1329,7 +1337,20 @@ function Geographic({
           </p>
         </div>
         </div>
-        <span className="severity critical">Critical risk</span>
+      <span
+        className={`severity ${
+          selectedTransaction?.geographicAnalysis?.travelPossible === false
+            ? "critical"
+            : ""
+        }`}
+      >
+        {selectedTransaction?.geographicAnalysis?.travelPossible === false
+          ? "Impossible travel"
+          : selectedTransaction?.geographicAnalysis?.travelPossible === true
+            ? "Travel feasible"
+            : "Not evaluated"}
+      </span>
+
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.5fr_.75fr]">
         <div className="card overflow-hidden">
@@ -1455,7 +1476,15 @@ function Geographic({
     </div>
   </div>
 
-  <div className="timeline-travel">
+    <div
+      className={`timeline-travel ${
+        selectedTransaction?.geographicAnalysis?.travelPossible === false
+          ? "danger"
+          : selectedTransaction?.geographicAnalysis?.travelPossible === true
+            ? "feasible"
+            : "unevaluated"
+      }`}
+    >
     <span>
       {selectedTransaction?.geographicAnalysis
         ? `${selectedTransaction.geographicAnalysis.availableMinutes.toFixed(1)} minutes elapsed`
@@ -1467,8 +1496,16 @@ function Geographic({
         : "Not available"}
     </b>
   </div>
+      <div
+        className={`timeline-item ${
+          selectedTransaction?.geographicAnalysis?.travelPossible === false
+            ? "danger"
+            : selectedTransaction?.geographicAnalysis?.travelPossible === true
+              ? "feasible"
+              : "unevaluated"
+        }`}
+      >
 
-      <div className="timeline-item danger">
         <i />
         <div>
           <b>
@@ -1497,7 +1534,13 @@ function Geographic({
             <div className="timeline mt-5">
             </div>
           </div>
-          <div className="insight-box"><Icon name="shield" /><div><b>Detection basis</b><span>The required route time is longer than the time available between the two transaction timestamps.</span></div></div>
+          <div className="insight-box"><Icon name="shield" /><div><b>Detection basis</b><span>
+  {selectedTransaction?.geographicAnalysis?.travelPossible === false
+    ? "The distance between transactions cannot reasonably be traveled within the available time."
+    : selectedTransaction?.geographicAnalysis?.travelPossible === true
+      ? "The distance between transactions can reasonably be traveled within the available time."
+      : "Insufficient information to determine travel feasibility."}
+</span></div></div>
         </div>
       </div>
     </>

@@ -70,3 +70,62 @@ button { cursor: pointer; }
 @media (max-width: 600px){
   .topbar p{display:none}.content{padding-inline:12px}.toolbar{align-items:flex-start;flex-direction:column}.toolbar .flex:first-child{width:100%;overflow-x:auto}.alert-row{align-items:flex-start}.alert-row>div:last-child{display:none}.threat-banner{align-items:flex-start}.threat-banner>div:first-child>span{display:none}.detail-item{grid-column:span 2}.map-label{display:none}.search-box+button{display:none}.login-form-wrap{padding:24px}.nav-item span{max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+/* Geographic analysis banner - feasible travel */
+.threat-banner.feasible {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.threat-banner.feasible h2 {
+    color: #166534;
+}
+
+.threat-banner.feasible p {
+    color: #15803d;
+}
+
+.threat-banner.feasible > div > span {
+    background: #16a34a;
+    box-shadow: 0 5px 14px #16a34a38;
+}
+
+/* Geographic analysis banner - not evaluated */
+.threat-banner.unevaluated {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.threat-banner.unevaluated h2,
+.threat-banner.unevaluated p {
+    color: #64748b;
+}
+
+.threat-banner.unevaluated > div > span {
+    background: #64748b;
+    box-shadow: none;
+}
+
+/* Dynamic timeline marker colors */
+.timeline-item.feasible i {
+    background: #16a34a;
+    box-shadow: 0 0 0 2px #86efac;
+}
+
+.timeline-item.unevaluated i {
+    background: #94a3b8;
+    box-shadow: 0 0 0 2px #cbd5e1;
+}
+
+/* Dynamic timeline distance colors */
+.timeline-travel.feasible b {
+    color: #15803d;
+}
+
+.timeline-travel.danger b {
+    color: #d33b49;
+}
+
+.timeline-travel.unevaluated b {
+    color: #64748b;
+}
